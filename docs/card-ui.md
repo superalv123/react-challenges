@@ -1,0 +1,2 @@
+Modify the React web app that displays a schedule for courses for a computer science department. Using Tailwind CSS, the page should look like ![screenshot](./card-ui.png).
+Depending on screen width, course cards may need more than one row. Each row should fill the available screen width. Cards on the same row should appear uniform in height and internal spacing. 

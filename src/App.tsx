@@ -32,25 +32,63 @@ const schedules = {
   },
 } as const
 
+type Course = {
+  code: string
+  term: string
+  number: string
+  meets: string
+  title: string
+}
+
+type CourseCardProps = {
+  course: Course
+}
+
+const CourseCard = ({ course }: CourseCardProps) => (
+  <article
+    aria-label={`${course.term} CS ${course.number}`}
+    className="flex h-full min-h-[220px] flex-col justify-between rounded-lg border border-stone-300 bg-white p-5 shadow-sm"
+  >
+    <div className="space-y-4">
+      <h2 className="text-2xl font-semibold leading-tight text-stone-900">
+        {course.term} CS {course.number}
+      </h2>
+
+      <p className="text-base leading-6 text-stone-700">{course.title}</p>
+    </div>
+
+    <footer className="mt-6 border-t border-stone-300 pt-4 text-base text-stone-800">
+      {course.meets}
+    </footer>
+  </article>
+)
+
 const App = () => {
   const schedule = schedules['CS-2018-2019']
 
-  const courses = Object.entries(schedule.courses).map(([code, course]) => ({
-    code,
-    ...course,
-  }))
+  const courses: Course[] = Object.entries(schedule.courses).map(
+    ([code, course]) => ({
+      code,
+      ...course,
+    }),
+  )
 
   return (
-    <main className="app-shell">
-      <h1 className="schedule-title">{schedule.title}</h1>
+    <main className="min-h-screen bg-stone-100 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl">
+        <h1 className="mb-6 text-3xl font-bold text-stone-900">
+          {schedule.title}
+        </h1>
 
-      <ul className="course-list" aria-label="Computer Science course schedule">
-        {courses.map(({ code, term, number, title }) => (
-          <li key={code} className="course-item">
-            {term} CS {number}: {title}
-          </li>
-        ))}
-      </ul>
+        <section
+          aria-label="Computer Science course schedule"
+          className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+        >
+          {courses.map((course) => (
+            <CourseCard key={course.code} course={course} />
+          ))}
+        </section>
+      </div>
     </main>
   )
 }
