@@ -1,0 +1,2 @@
+Modify the react web app to fetch the schedule data from https://courses.cs.northwestern.edu/394/guides/data/cs-courses-firestore.php instead of having it hardcoded.
+The data will be in the exact same JSON format. It is ok to define a new file that contains a helper json query function if needed. Remember to account for states where there is an error or the data is still loading.

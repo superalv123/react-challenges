@@ -1,43 +1,27 @@
 import './App.css'
+import { useJsonQuery } from './fetch'
 
-const schedules = {
-  'CS-2018-2019': {
-    title: 'CS Courses for 2018-2019',
-    courses: {
-      F101: {
-        term: 'Fall',
-        number: '101',
-        meets: 'MWF 11:00-11:50',
-        title: 'Computer Science: Concepts, Philosophy, and Connections',
-      },
-      F110: {
-        term: 'Fall',
-        number: '110',
-        meets: 'MWF 10:00-10:50',
-        title: 'Intro Programming for non-majors',
-      },
-      S313: {
-        term: 'Spring',
-        number: '313',
-        meets: 'TuTh 15:30-16:50',
-        title: 'Tangible Interaction Design and Learning',
-      },
-      S314: {
-        term: 'Spring',
-        number: '314',
-        meets: 'TuTh 9:30-10:50',
-        title: 'Tech & Human Interaction',
-      },
-    },
-  },
-} as const
+const SCHEDULE_URL =
+  'https://courses.cs.northwestern.edu/394/guides/data/cs-courses-firestore.php'
 
-type Course = {
-  code: string
+type ScheduleCourse = {
   term: string
   number: string
   meets: string
   title: string
+}
+
+type Schedule = {
+  title: string
+  courses: Record<string, ScheduleCourse>
+}
+
+type ScheduleData = {
+  schedules: Record<string, Schedule>
+}
+
+type Course = ScheduleCourse & {
+  code: string
 }
 
 type CourseCardProps = {
@@ -64,7 +48,66 @@ const CourseCard = ({ course }: CourseCardProps) => (
 )
 
 const App = () => {
-  const schedule = schedules['CS-2018-2019']
+  const [json, isLoading, error] = useJsonQuery<ScheduleData>(SCHEDULE_URL)
+
+  if (isLoading) {
+    return (
+      <main className="min-h-screen bg-stone-100 px-4 py-6 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <p className="text-lg text-stone-700">Loading course schedule...</p>
+        </div>
+      </main>
+    )
+  }
+
+  if (error) {
+    return (
+      <main className="min-h-screen bg-stone-100 px-4 py-6 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <p
+            role="alert"
+            aria-label="Unable to load course schedule"
+            className="text-lg text-red-700"
+          >
+            {`Error loading course schedule: ${error}`}
+          </p>
+        </div>
+      </main>
+    )
+  }
+
+  if (
+    !json ||
+    !json.schedules ||
+    typeof json.schedules !== 'object' ||
+    Array.isArray(json.schedules)
+  ) {
+    return (
+      <main className="min-h-screen bg-stone-100 px-4 py-6 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <p className="text-lg text-stone-700">No course schedule data found.</p>
+        </div>
+      </main>
+    )
+  }
+
+  const schedule = json.schedules['CS-2018-2019']
+
+  if (
+    !schedule ||
+    typeof schedule.title !== 'string' ||
+    !schedule.courses ||
+    typeof schedule.courses !== 'object' ||
+    Array.isArray(schedule.courses)
+  ) {
+    return (
+      <main className="min-h-screen bg-stone-100 px-4 py-6 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <p className="text-lg text-stone-700">Course schedule was not found.</p>
+        </div>
+      </main>
+    )
+  }
 
   const courses: Course[] = Object.entries(schedule.courses).map(
     ([code, course]) => ({
