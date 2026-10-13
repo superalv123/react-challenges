@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import App from './App'
@@ -58,6 +58,60 @@ describe('App', () => {
     expect(
       screen.getByText(/computer science: concepts, philosophy, and connections/i),
     ).toBeTruthy()
+  })
+
+  it('filters courses when the selected term changes', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          schedules: {
+            'CS-2018-2019': {
+              title: 'CS Courses for 2018-2019',
+              courses: {
+                F101: {
+                  term: 'Fall',
+                  number: '101',
+                  meets: 'MWF 11:00-11:50',
+                  title: 'Fall course',
+                },
+                W201: {
+                  term: 'Winter',
+                  number: '201',
+                  meets: 'TuTh 9:30-10:50',
+                  title: 'Winter course',
+                },
+                S301: {
+                  term: 'Spring',
+                  number: '301',
+                  meets: 'TuTh 11:00-12:20',
+                  title: 'Spring course',
+                },
+              },
+            },
+          },
+        }),
+      }),
+    )
+
+    render(<App />)
+
+    expect(await screen.findByText('Fall course')).toBeTruthy()
+    expect(screen.queryByText('Winter course')).toBeNull()
+    expect(screen.queryByText('Spring course')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Winter' }))
+    expect(screen.getByText('Winter course')).toBeTruthy()
+    expect(screen.queryByText('Fall course')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Spring' }))
+    expect(screen.getByText('Spring course')).toBeTruthy()
+    expect(screen.queryByText('Winter course')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Fall' }))
+    expect(screen.getByText('Fall course')).toBeTruthy()
+    expect(screen.queryByText('Spring course')).toBeNull()
   })
 
   it('shows an error message if the schedule cannot be fetched', async () => {

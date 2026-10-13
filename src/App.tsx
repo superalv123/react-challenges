@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import './App.css'
 import { useJsonQuery } from './fetch'
 
@@ -28,6 +29,8 @@ type CourseCardProps = {
   course: Course
 }
 
+const termTypes = ['Fall', 'Winter', 'Spring']
+
 const CourseCard = ({ course }: CourseCardProps) => (
   <article
     aria-label={`${course.term} CS ${course.number}`}
@@ -46,6 +49,65 @@ const CourseCard = ({ course }: CourseCardProps) => (
     </footer>
   </article>
 )
+
+type TermSelectorProps = {
+  options: string[]
+  selectedTerm: string
+  onSelectTerm: (term: string) => void
+}
+
+const TermSelector = ({
+  options,
+  selectedTerm,
+  onSelectTerm,
+}: TermSelectorProps) => (
+  <nav aria-label="Choose academic term" className="mb-6 flex gap-2">
+    {options.map((term) => (
+      <button
+        key={term}
+        type="button"
+        aria-pressed={selectedTerm === term}
+        onClick={() => onSelectTerm(term)}
+        className={`rounded-md border px-4 py-2 font-medium ${
+          selectedTerm === term
+            ? 'border-stone-900 bg-stone-900 text-white'
+            : 'border-stone-300 bg-white text-stone-800 hover:bg-stone-200'
+        }`}
+      >
+        {term}
+      </button>
+    ))}
+  </nav>
+)
+
+type TermPageProps = {
+  courses: Course[]
+}
+
+const TermPage = ({ courses }: TermPageProps) => {
+  const [selectedTerm, setSelectedTerm] = useState('Fall')
+  const filteredCourses = courses.filter(
+    (course) => course.term === selectedTerm,
+  )
+
+  return (
+    <>
+      <TermSelector
+        options={termTypes}
+        selectedTerm={selectedTerm}
+        onSelectTerm={setSelectedTerm}
+      />
+      <section
+        aria-label={`${selectedTerm} computer science courses`}
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+      >
+        {filteredCourses.map((course) => (
+          <CourseCard key={course.code} course={course} />
+        ))}
+      </section>
+    </>
+  )
+}
 
 const App = () => {
   const [json, isLoading, error] = useJsonQuery<ScheduleData>(SCHEDULE_URL)
@@ -122,15 +184,7 @@ const App = () => {
         <h1 className="mb-6 text-3xl font-bold text-stone-900">
           {schedule.title}
         </h1>
-
-        <section
-          aria-label="Computer Science course schedule"
-          className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
-        >
-          {courses.map((course) => (
-            <CourseCard key={course.code} course={course} />
-          ))}
-        </section>
+        <TermPage courses={courses} />
       </div>
     </main>
   )
