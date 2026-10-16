@@ -27,27 +27,36 @@ type Course = ScheduleCourse & {
 
 type CourseCardProps = {
   course: Course
+  isSelected: boolean
+  onToggle: (course: Course) => void
 }
 
 const termTypes = ['Fall', 'Winter', 'Spring']
 
-const CourseCard = ({ course }: CourseCardProps) => (
-  <article
+const CourseCard = ({ course, isSelected, onToggle }: CourseCardProps) => (
+  <button
+    type="button"
     aria-label={`${course.term} CS ${course.number}`}
-    className="flex h-full min-h-[220px] flex-col justify-between rounded-lg border border-stone-300 bg-white p-5 shadow-sm"
+    aria-pressed={isSelected}
+    onClick={() => onToggle(course)}
+    className={`flex h-full min-h-[220px] w-full flex-col justify-between rounded-lg border p-5 text-left shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700 ${
+      isSelected
+        ? 'border-green-400 bg-green-100'
+        : 'border-stone-300 bg-white hover:bg-stone-50'
+    }`}
   >
     <div className="space-y-4">
-      <h2 className="text-2xl font-semibold leading-tight text-stone-900">
+      <span className="text-2xl font-semibold leading-tight text-stone-900">
         {course.term} CS {course.number}
-      </h2>
+      </span>
 
       <p className="text-base leading-6 text-stone-700">{course.title}</p>
     </div>
 
-    <footer className="mt-6 border-t border-stone-300 pt-4 text-base text-stone-800">
+    <span className="mt-6 border-t border-stone-300 pt-4 text-base text-stone-800">
       {course.meets}
-    </footer>
-  </article>
+    </span>
+  </button>
 )
 
 type TermSelectorProps = {
@@ -86,9 +95,17 @@ type TermPageProps = {
 
 const TermPage = ({ courses }: TermPageProps) => {
   const [selectedTerm, setSelectedTerm] = useState('Fall')
+  const [selectedCourses, setSelectedCourses] = useState<Course[]>([])
   const filteredCourses = courses.filter(
     (course) => course.term === selectedTerm,
   )
+  const toggleCourse = (courseToToggle: Course) => {
+    setSelectedCourses((currentCourses) =>
+      currentCourses.some((course) => course.code === courseToToggle.code)
+        ? currentCourses.filter((course) => course.code !== courseToToggle.code)
+        : [...currentCourses, courseToToggle],
+    )
+  }
 
   return (
     <>
@@ -102,7 +119,14 @@ const TermPage = ({ courses }: TermPageProps) => {
         className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
       >
         {filteredCourses.map((course) => (
-          <CourseCard key={course.code} course={course} />
+          <CourseCard
+            key={course.code}
+            course={course}
+            isSelected={selectedCourses.some(
+              (selectedCourse) => selectedCourse.code === course.code,
+            )}
+            onToggle={toggleCourse}
+          />
         ))}
       </section>
     </>
