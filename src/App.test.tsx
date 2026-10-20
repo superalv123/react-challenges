@@ -167,6 +167,75 @@ describe('App', () => {
     expect(secondCourse.getAttribute('aria-pressed')).toBe('true')
   })
 
+  it('opens a course plan with selected course details and closes from the button or backdrop', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          schedules: {
+            'CS-2018-2019': {
+              title: 'CS Courses for 2018-2019',
+              courses: {
+                F101: {
+                  term: 'Fall',
+                  number: '101',
+                  meets: 'MWF 11:00-11:50',
+                  title: 'Computer Science Fundamentals',
+                },
+              },
+            },
+          },
+        }),
+      }),
+    )
+
+    render(<App />)
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Fall CS 101' }),
+    )
+    fireEvent.click(screen.getByRole('button', { name: /course plan/i }))
+
+    const dialog = screen.getByRole('dialog', { name: 'Course plan' })
+    expect(dialog.textContent).toContain('CS 101: Computer Science Fundamentals')
+    expect(dialog.textContent).toContain('Fall · MWF 11:00-11:50')
+
+    fireEvent.click(screen.getByRole('heading', { name: 'Course plan' }))
+    expect(screen.getByRole('dialog')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: /course plan/i }))
+    fireEvent.click(screen.getByRole('dialog').parentElement as HTMLElement)
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('shows instructions when opening an empty course plan', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          schedules: {
+            'CS-2018-2019': {
+              title: 'CS Courses for 2018-2019',
+              courses: {},
+            },
+          },
+        }),
+      }),
+    )
+
+    render(<App />)
+    await screen.findByRole('button', { name: 'Fall' })
+    fireEvent.click(screen.getByRole('button', { name: /course plan/i }))
+
+    expect(screen.getByText(/no courses selected/i)).toBeTruthy()
+    expect(screen.getByText(/click courses to add them/i)).toBeTruthy()
+  })
+
   it('shows an error message if the schedule cannot be fetched', async () => {
     vi.stubGlobal(
       'fetch',
