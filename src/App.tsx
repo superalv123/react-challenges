@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import './App.css'
 import { useJsonQuery } from './fetch'
+import { getConflictingCourseList } from './utilities/calculateConflicts'
 
 const SCHEDULE_URL =
   'https://courses.cs.northwestern.edu/394/guides/data/cs-courses-firestore.php'
@@ -28,21 +29,31 @@ type Course = ScheduleCourse & {
 type CourseCardProps = {
   course: Course
   isSelected: boolean
+  isUnavailable: boolean
   onToggle: (course: Course) => void
 }
 
 const termTypes = ['Fall', 'Winter', 'Spring']
 
-const CourseCard = ({ course, isSelected, onToggle }: CourseCardProps) => (
+const CourseCard = ({
+  course,
+  isSelected,
+  isUnavailable,
+  onToggle,
+}: CourseCardProps) => (
   <button
     type="button"
     aria-label={`${course.term} CS ${course.number}`}
     aria-pressed={isSelected}
+    aria-disabled={isUnavailable}
+    disabled={isUnavailable}
     onClick={() => onToggle(course)}
     className={`flex h-full min-h-[220px] w-full flex-col justify-between rounded-lg border p-5 text-left shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700 ${
-      isSelected
-        ? 'border-green-400 bg-green-100'
-        : 'border-stone-300 bg-white hover:bg-stone-50'
+      isUnavailable
+        ? 'cursor-not-allowed border-stone-200 bg-stone-100 text-stone-500 opacity-60'
+        : isSelected
+          ? 'border-green-400 bg-green-100'
+          : 'border-stone-300 bg-white hover:bg-stone-50'
     }`}
   >
     <div className="space-y-4">
@@ -55,6 +66,9 @@ const CourseCard = ({ course, isSelected, onToggle }: CourseCardProps) => (
 
     <span className="mt-6 border-t border-stone-300 pt-4 text-base text-stone-800">
       {course.meets}
+      {isUnavailable && (
+        <span className="ml-2 font-medium text-red-700">Time conflict</span>
+      )}
     </span>
   </button>
 )
@@ -160,6 +174,8 @@ const TermPage = ({ courses }: TermPageProps) => {
     setSelectedCourses((currentCourses) =>
       currentCourses.some((course) => course.code === courseToToggle.code)
         ? currentCourses.filter((course) => course.code !== courseToToggle.code)
+        : getConflictingCourseList(courseToToggle, currentCourses).length > 0
+          ? currentCourses
         : [...currentCourses, courseToToggle],
     )
   }
@@ -184,16 +200,24 @@ const TermPage = ({ courses }: TermPageProps) => {
         aria-label={`${selectedTerm} computer science courses`}
         className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
       >
-        {filteredCourses.map((course) => (
-          <CourseCard
-            key={course.code}
-            course={course}
-            isSelected={selectedCourses.some(
-              (selectedCourse) => selectedCourse.code === course.code,
-            )}
-            onToggle={toggleCourse}
-          />
-        ))}
+        {filteredCourses.map((course) => {
+          const isSelected = selectedCourses.some(
+            (selectedCourse) => selectedCourse.code === course.code,
+          )
+
+          return (
+            <CourseCard
+              key={course.code}
+              course={course}
+              isSelected={isSelected}
+              isUnavailable={
+                !isSelected &&
+                getConflictingCourseList(course, selectedCourses).length > 0
+              }
+              onToggle={toggleCourse}
+            />
+          )
+        })}
       </section>
       {isCoursePlanOpen && (
         <CoursePlan

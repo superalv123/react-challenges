@@ -167,6 +167,68 @@ describe('App', () => {
     expect(secondCourse.getAttribute('aria-pressed')).toBe('true')
   })
 
+  it('prevents conflicting selections and makes courses available after unselecting', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          schedules: {
+            'CS-2018-2019': {
+              title: 'CS Courses for 2018-2019',
+              courses: {
+                F101: {
+                  term: 'Fall',
+                  number: '101',
+                  meets: 'MWF 9:00-9:50',
+                  title: 'Morning course',
+                },
+                F102: {
+                  term: 'Fall',
+                  number: '102',
+                  meets: 'MWF 9:30-10:20',
+                  title: 'Overlapping course',
+                },
+                F103: {
+                  term: 'Fall',
+                  number: '103',
+                  meets: 'TuTh 9:30-10:20',
+                  title: 'Non-conflicting course',
+                },
+              },
+            },
+          },
+        }),
+      }),
+    )
+
+    render(<App />)
+
+    const selectedCourse = await screen.findByRole('button', {
+      name: 'Fall CS 101',
+    })
+    const conflictingCourse = screen.getByRole('button', {
+      name: 'Fall CS 102',
+    })
+    const availableCourse = screen.getByRole('button', {
+      name: 'Fall CS 103',
+    })
+
+    fireEvent.click(selectedCourse)
+
+    expect(selectedCourse.hasAttribute('disabled')).toBe(false)
+    expect(selectedCourse.getAttribute('aria-pressed')).toBe('true')
+    expect(conflictingCourse.hasAttribute('disabled')).toBe(true)
+    expect(screen.getByText('Time conflict')).toBeTruthy()
+    expect(availableCourse.hasAttribute('disabled')).toBe(false)
+
+    fireEvent.click(selectedCourse)
+
+    expect(selectedCourse.getAttribute('aria-pressed')).toBe('false')
+    expect(conflictingCourse.hasAttribute('disabled')).toBe(false)
+    expect(screen.queryByText('Time conflict')).toBeNull()
+  })
+
   it('opens a course plan with selected course details and closes from the button or backdrop', async () => {
     vi.stubGlobal(
       'fetch',
