@@ -1,7 +1,8 @@
+import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
-import './App.css'
-import { useJsonQuery } from './fetch'
-import { getConflictingCourseList } from './utilities/calculateConflicts'
+import '../App.css'
+import { useJsonQuery } from '../utilities/fetch'
+import { getConflictingCourseList } from '../utilities/calculateConflicts'
 
 const SCHEDULE_URL =
   'https://courses.cs.northwestern.edu/394/guides/data/cs-courses-firestore.php'
@@ -229,7 +230,7 @@ const TermPage = ({ courses }: TermPageProps) => {
   )
 }
 
-const App = () => {
+export const App = () => {
   const [json, isLoading, error] = useJsonQuery<ScheduleData>(SCHEDULE_URL)
 
   if (isLoading) {
@@ -299,9 +300,9 @@ const App = () => {
   )
 
   return (
-    <main className="min-h-screen bg-stone-100 px-4 py-6 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-stone-100 px-4 py-3 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
-        <h1 className="mb-6 text-3xl font-bold text-stone-900">
+        <h1 className="mb-6 text-2xl text-stone-900">
           {schedule.title}
         </h1>
         <TermPage courses={courses} />
@@ -310,4 +311,6 @@ const App = () => {
   )
 }
 
-export default App
+export const Route = createFileRoute('/')({
+  component: App,
+})
