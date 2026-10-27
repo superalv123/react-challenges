@@ -1,31 +1,10 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import '../App.css'
 import { useJsonQuery } from '../utilities/fetch'
 import { getConflictingCourseList } from '../utilities/calculateConflicts'
-
-const SCHEDULE_URL =
-  'https://courses.cs.northwestern.edu/394/guides/data/cs-courses-firestore.php'
-
-type ScheduleCourse = {
-  term: string
-  number: string
-  meets: string
-  title: string
-}
-
-type Schedule = {
-  title: string
-  courses: Record<string, ScheduleCourse>
-}
-
-type ScheduleData = {
-  schedules: Record<string, Schedule>
-}
-
-type Course = ScheduleCourse & {
-  code: string
-}
+import type { Course, ScheduleData } from '../types/schedule'
+import { SCHEDULE_URL } from '../types/schedule'
 
 type CourseCardProps = {
   course: Course
@@ -42,36 +21,52 @@ const CourseCard = ({
   isUnavailable,
   onToggle,
 }: CourseCardProps) => (
-  <button
-    type="button"
-    aria-label={`${course.term} CS ${course.number}`}
-    aria-pressed={isSelected}
-    aria-disabled={isUnavailable}
-    disabled={isUnavailable}
-    onClick={() => onToggle(course)}
-    className={`flex h-full min-h-[220px] w-full flex-col justify-between rounded-lg border p-5 text-left shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700 ${
+  <article
+    className={`flex h-full min-h-[220px] flex-col justify-between rounded-lg border p-5 shadow-sm transition-colors ${
       isUnavailable
-        ? 'cursor-not-allowed border-stone-200 bg-stone-100 text-stone-500 opacity-60'
+        ? 'border-stone-200 bg-stone-100 opacity-60'
         : isSelected
           ? 'border-green-400 bg-green-100'
-          : 'border-stone-300 bg-white hover:bg-stone-50'
+          : 'border-stone-300 bg-white'
     }`}
   >
-    <div className="space-y-4">
+    <button
+      type="button"
+      aria-label={`${course.term} CS ${course.number}`}
+      aria-pressed={isSelected}
+      aria-disabled={isUnavailable}
+      disabled={isUnavailable}
+      onClick={() => onToggle(course)}
+      className="flex flex-1 flex-col justify-between text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700"
+    >
       <span className="text-2xl font-semibold leading-tight text-stone-900">
         {course.term} CS {course.number}
       </span>
 
-      <p className="text-base leading-6 text-stone-700">{course.title}</p>
-    </div>
+      <span className="mt-4 text-base leading-6 text-stone-700">
+        {course.title}
+      </span>
 
-    <span className="mt-6 border-t border-stone-300 pt-4 text-base text-stone-800">
-      {course.meets}
-      {isUnavailable && (
-        <span className="ml-2 font-medium text-red-700">Time conflict</span>
-      )}
-    </span>
-  </button>
+      <span className="mt-6 border-t border-stone-300 pt-4 text-base text-stone-800">
+        {course.meets}
+        {isUnavailable && (
+          <span className="ml-2 font-medium text-red-700">Time conflict</span>
+        )}
+      </span>
+    </button>
+    <Link
+      to="/course/$code/edit"
+      params={{ code: course.code }}
+      className={`mt-3 w-full rounded-md border px-3 py-2 font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700 ${
+        isSelected
+          ? 'border-green-400 bg-green-100 text-stone-800 hover:bg-green-200'
+          : 'border-stone-300 bg-white text-stone-800 hover:bg-stone-200'
+      }`}
+      aria-label={`Edit ${course.term} CS ${course.number}`}
+    >
+      Edit course
+    </Link>
+  </article>
 )
 
 type TermSelectorProps = {
@@ -230,7 +225,7 @@ const TermPage = ({ courses }: TermPageProps) => {
   )
 }
 
-export const App = () => {
+const App = () => {
   const [json, isLoading, error] = useJsonQuery<ScheduleData>(SCHEDULE_URL)
 
   if (isLoading) {

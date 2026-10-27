@@ -1,7 +1,21 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import {
+  createMemoryHistory,
+  createRouter,
+  RouterProvider,
+} from '@tanstack/react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { App } from './routes/index'
+import { routeTree } from './routeTree.gen'
+
+const renderApp = (initialEntry = '/') => {
+  const router = createRouter({
+    routeTree,
+    history: createMemoryHistory({ initialEntries: [initialEntry] }),
+  })
+
+  return render(<RouterProvider router={router} />)
+}
 
 describe('App', () => {
   afterEach(() => {
@@ -9,7 +23,7 @@ describe('App', () => {
     vi.unstubAllGlobals()
   })
 
-  it('shows the loading state while schedule data is being fetched', () => {
+  it('shows the loading state while schedule data is being fetched', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(
@@ -20,9 +34,9 @@ describe('App', () => {
       ),
     )
 
-    render(<App />)
+    renderApp()
 
-    expect(screen.getByText(/loading course schedule/i)).toBeTruthy()
+    expect(await screen.findByText(/loading course schedule/i)).toBeTruthy()
   })
 
   it('renders the schedule after the data is fetched', async () => {
@@ -48,7 +62,7 @@ describe('App', () => {
       }),
     )
 
-    render(<App />)
+    renderApp()
 
     expect(
       await screen.findByRole('heading', {
@@ -95,7 +109,7 @@ describe('App', () => {
       }),
     )
 
-    render(<App />)
+    renderApp()
 
     expect(await screen.findByText('Fall course')).toBeTruthy()
     expect(screen.queryByText('Winter course')).toBeNull()
@@ -143,7 +157,7 @@ describe('App', () => {
       }),
     )
 
-    render(<App />)
+    renderApp()
 
     const firstCourse = await screen.findByRole('button', {
       name: 'Fall CS 101',
@@ -158,8 +172,8 @@ describe('App', () => {
 
     expect(firstCourse.getAttribute('aria-pressed')).toBe('true')
     expect(secondCourse.getAttribute('aria-pressed')).toBe('true')
-    expect(firstCourse.className).toContain('bg-green-100')
-    expect(secondCourse.className).toContain('bg-green-100')
+    expect(firstCourse.closest('article')?.className).toContain('bg-green-100')
+    expect(secondCourse.closest('article')?.className).toContain('bg-green-100')
 
     fireEvent.click(firstCourse)
 
@@ -202,7 +216,7 @@ describe('App', () => {
       }),
     )
 
-    render(<App />)
+    renderApp()
 
     const selectedCourse = await screen.findByRole('button', {
       name: 'Fall CS 101',
@@ -252,7 +266,7 @@ describe('App', () => {
       }),
     )
 
-    render(<App />)
+    renderApp()
 
     fireEvent.click(
       await screen.findByRole('button', { name: 'Fall CS 101' }),
@@ -290,12 +304,64 @@ describe('App', () => {
       }),
     )
 
-    render(<App />)
+    renderApp()
     await screen.findByRole('button', { name: 'Fall' })
     fireEvent.click(screen.getByRole('button', { name: /course plan/i }))
 
     expect(screen.getByText(/no courses selected/i)).toBeTruthy()
     expect(screen.getByText(/click courses to add them/i)).toBeTruthy()
+  })
+
+  it('opens a populated course edit form and returns to the list on cancel', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          schedules: {
+            'CS-2018-2019': {
+              title: 'CS Courses for 2018-2019',
+              courses: {
+                F101: {
+                  term: 'Fall',
+                  number: '101',
+                  meets: 'MWF 11:00-11:50',
+                  title: 'Computer Science Fundamentals',
+                },
+              },
+            },
+          },
+        }),
+      }),
+    )
+
+    renderApp()
+
+    fireEvent.click(
+      await screen.findByRole('link', { name: 'Edit Fall CS 101' }),
+    )
+
+    expect(
+      await screen.findByRole('heading', { name: 'Edit CS F101' }),
+    ).toBeTruthy()
+    expect(
+      (screen.getByRole('textbox', { name: 'Course title' }) as HTMLInputElement)
+        .value,
+    ).toBe('Computer Science Fundamentals')
+    expect(
+      (screen.getByRole('textbox', { name: 'Meeting times' }) as HTMLInputElement)
+        .value,
+    ).toBe('MWF 11:00-11:50')
+    expect(screen.queryByRole('button', { name: /submit/i })).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'CS Courses for 2018-2019',
+      }),
+    ).toBeTruthy()
+    expect(await screen.findByRole('link', { name: 'Edit Fall CS 101' })).toBeTruthy()
   })
 
   it('shows an error message if the schedule cannot be fetched', async () => {
@@ -307,7 +373,7 @@ describe('App', () => {
       }),
     )
 
-    render(<App />)
+    renderApp()
 
     expect(
       await screen.findByRole('alert', {
@@ -325,7 +391,7 @@ describe('App', () => {
       }),
     )
 
-    render(<App />)
+    renderApp()
 
     expect(
       await screen.findByText(/no course schedule data found/i),
@@ -341,7 +407,7 @@ describe('App', () => {
       }),
     )
 
-    render(<App />)
+    renderApp()
 
     expect(
       await screen.findByText(/course schedule was not found/i),
