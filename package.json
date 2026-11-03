@@ -9,13 +9,15 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest --ui",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "firestore:import": "node scripts/import-firestore-data.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^6.0.2",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-router": "^1.170.46",
     "@tanstack/react-router-devtools": "^1.167.2",
+    "firebase": "^13.2.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-hook-form": "^7.91.0",

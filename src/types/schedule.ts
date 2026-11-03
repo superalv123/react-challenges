@@ -1,7 +1,5 @@
-import * as z from 'zod';
-import { zodResolver } from "@hookform/resolvers/zod";
-
-export const SCHEDULE_URL = 'https://courses.cs.northwestern.edu/394/guides/data/cs-courses-firestore.php'
+import * as z from 'zod'
+import { zodResolver } from '@hookform/resolvers/zod'
 
 const isValidMeetingTime = (value: string) => {
   if (value === '') {
@@ -67,7 +65,8 @@ const ScheduleData = z.object({
 export type ScheduleCourse = z.infer<typeof ScheduleCourse>
 export type Course = z.infer<typeof Course>
 export type Schedule = z.infer<typeof Schedule>
+export type ScheduleEntry = z.infer<typeof Schedule>
 export type ScheduleData = z.infer<typeof ScheduleData>
 
-export const validateCourseData = Course.safeParse;
-export const courseResolver = zodResolver(Course);
+export const validateCourseData = Course.safeParse
+export const courseResolver = zodResolver(Course)

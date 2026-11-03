@@ -4,9 +4,36 @@ import {
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { routeTree } from './routeTree.gen'
+
+const { mockGetDoc } = vi.hoisted(() => ({
+  mockGetDoc: vi.fn(),
+}))
+
+vi.mock('firebase/firestore', () => ({
+  doc: vi.fn((...args: [unknown, string]) => args[1]),
+  getDoc: mockGetDoc,
+  getFirestore: vi.fn(() => ({})),
+}))
+
+beforeEach(() => {
+  mockGetDoc.mockImplementation(async () => {
+    const response = await fetch('https://firestore.test')
+
+    if (!response.ok) {
+      throw new Error(`Request failed (${response.status})`)
+    }
+
+    const data = await response.json()
+
+    return {
+      exists: () => true,
+      data: () => data,
+    }
+  })
+})
 
 const renderApp = (initialEntry = '/') => {
   const router = createRouter({
@@ -19,6 +46,7 @@ const renderApp = (initialEntry = '/') => {
 
 describe('App', () => {
   afterEach(() => {
+    mockGetDoc.mockReset()
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
   })

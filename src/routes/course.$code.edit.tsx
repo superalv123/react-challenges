@@ -1,11 +1,14 @@
 import { createFileRoute, useParams } from '@tanstack/react-router'
-import { useJsonQuery } from '../utilities/fetch'
-import { SCHEDULE_URL, type ScheduleData } from '../types/schedule'
 import CourseEditForm from '../components/CourseEditForm'
+import type { ScheduleData, ScheduleEntry } from '../types/schedule'
+import { resolveSchedule, useDataQuery } from '../utilities/firestore'
 
 const CourseEditComponent = () => {
   const { code } = useParams({ from: '/course/$code/edit' })
-  const [json, isLoading, error] = useJsonQuery<ScheduleData>(SCHEDULE_URL)
+  const [json, isLoading, error] = useDataQuery<
+    ScheduleData | ScheduleEntry
+  >('schedules/CS-2018-2019')
+  const courseData = resolveSchedule(json)
 
   if (isLoading) {
     return <p className="text-stone-700">Loading course...</p>
@@ -19,7 +22,7 @@ const CourseEditComponent = () => {
     )
   }
 
-  const course = json?.schedules?.['CS-2018-2019']?.courses?.[code]
+  const course = courseData?.courses?.[code]
 
   if (!course) {
     return <p role="alert" className="text-red-700">Course not found.</p>

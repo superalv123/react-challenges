@@ -1,10 +1,9 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import '../App.css'
-import { useJsonQuery } from '../utilities/fetch'
 import { getConflictingCourseList } from '../utilities/calculateConflicts'
-import type { Course, ScheduleData } from '../types/schedule'
-import { SCHEDULE_URL } from '../types/schedule'
+import { resolveSchedule, useDataQuery } from '../utilities/firestore'
+import type { Course, ScheduleData, ScheduleEntry } from '../types/schedule'
 
 type CourseCardProps = {
   course: Course
@@ -226,7 +225,9 @@ const TermPage = ({ courses }: TermPageProps) => {
 }
 
 const App = () => {
-  const [json, isLoading, error] = useJsonQuery<ScheduleData>(SCHEDULE_URL)
+  const [json, isLoading, error] = useDataQuery<ScheduleData | ScheduleEntry>(
+    'schedules/CS-2018-2019',
+  )
 
   if (isLoading) {
     return (
@@ -254,12 +255,7 @@ const App = () => {
     )
   }
 
-  if (
-    !json ||
-    !json.schedules ||
-    typeof json.schedules !== 'object' ||
-    Array.isArray(json.schedules)
-  ) {
+  if (!json) {
     return (
       <main className="min-h-screen bg-stone-100 px-4 py-6 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
@@ -269,7 +265,7 @@ const App = () => {
     )
   }
 
-  const schedule = json.schedules['CS-2018-2019']
+  const schedule = resolveSchedule(json)
 
   if (
     !schedule ||
