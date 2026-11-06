@@ -1,13 +1,17 @@
 import { createFileRoute, useParams } from '@tanstack/react-router'
 import CourseEditForm from '../components/CourseEditForm'
 import type { ScheduleData, ScheduleEntry } from '../types/schedule'
-import { resolveSchedule, useDataQuery } from '../utilities/firestore'
+import {
+  resolveSchedule,
+  SCHEDULE_DOCUMENT_PATH,
+  useDataQuery,
+} from '../services/firestore'
 
 const CourseEditComponent = () => {
   const { code } = useParams({ from: '/course/$code/edit' })
   const [json, isLoading, error] = useDataQuery<
     ScheduleData | ScheduleEntry
-  >('schedules/CS-2018-2019')
+  >(SCHEDULE_DOCUMENT_PATH)
   const courseData = resolveSchedule(json)
 
   if (isLoading) {

@@ -1,7 +1,13 @@
-import { doc, getDoc } from 'firebase/firestore'
+import { doc, FieldPath, getDoc, updateDoc } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
-import type { ScheduleData, ScheduleEntry } from '../types/schedule'
+import type {
+  ScheduleCourse,
+  ScheduleData,
+  ScheduleEntry,
+} from '../types/schedule'
 import { db } from './firebase'
+
+export const SCHEDULE_DOCUMENT_PATH = 'schedules/CS-2018-2019'
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -104,4 +110,12 @@ export const useDataQuery = <T,>(
   }, [documentPath])
 
   return [data, isLoading, error]
+}
+
+export const updateCourse = async (
+  documentPath: string,
+  code: string,
+  course: ScheduleCourse,
+): Promise<void> => {
+  await updateDoc(doc(db, documentPath), new FieldPath('courses', code), course)
 }

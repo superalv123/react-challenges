@@ -2,7 +2,11 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import '../App.css'
 import { getConflictingCourseList } from '../utilities/calculateConflicts'
-import { resolveSchedule, useDataQuery } from '../utilities/firestore'
+import {
+  resolveSchedule,
+  SCHEDULE_DOCUMENT_PATH,
+  useDataQuery,
+} from '../services/firestore'
 import type { Course, ScheduleData, ScheduleEntry } from '../types/schedule'
 
 type CourseCardProps = {
@@ -226,7 +230,7 @@ const TermPage = ({ courses }: TermPageProps) => {
 
 const App = () => {
   const [json, isLoading, error] = useDataQuery<ScheduleData | ScheduleEntry>(
-    'schedules/CS-2018-2019',
+    SCHEDULE_DOCUMENT_PATH,
   )
 
   if (isLoading) {

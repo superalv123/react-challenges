@@ -8,14 +8,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { routeTree } from './routeTree.gen'
 
-const { mockGetDoc } = vi.hoisted(() => ({
+const { mockGetDoc, mockUpdateDoc } = vi.hoisted(() => ({
   mockGetDoc: vi.fn(),
+  mockUpdateDoc: vi.fn(),
 }))
 
 vi.mock('firebase/firestore', () => ({
   doc: vi.fn((...args: [unknown, string]) => args[1]),
+  FieldPath: class {
+    segments: string[]
+    constructor(...segments: string[]) {
+      this.segments = segments
+    }
+  },
   getDoc: mockGetDoc,
   getFirestore: vi.fn(() => ({})),
+  updateDoc: mockUpdateDoc,
 }))
 
 beforeEach(() => {
@@ -47,6 +55,7 @@ const renderApp = (initialEntry = '/') => {
 describe('App', () => {
   afterEach(() => {
     mockGetDoc.mockReset()
+    mockUpdateDoc.mockReset()
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
   })
@@ -380,8 +389,6 @@ describe('App', () => {
       (screen.getByRole('textbox', { name: 'Meeting times' }) as HTMLInputElement)
         .value,
     ).toBe('MWF 11:00-11:50')
-    expect(screen.queryByRole('button', { name: /submit/i })).toBeNull()
-
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
 
     expect(
@@ -390,6 +397,105 @@ describe('App', () => {
       }),
     ).toBeTruthy()
     expect(await screen.findByRole('link', { name: 'Edit Fall CS 101' })).toBeTruthy()
+  })
+
+  describe('course edit form submission', () => {
+    const stubSchedule = () =>
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            schedules: {
+              'CS-2018-2019': {
+                title: 'CS Courses for 2018-2019',
+                courses: {
+                  F101: {
+                    term: 'Fall',
+                    number: '101',
+                    meets: 'MWF 11:00-11:50',
+                    title: 'Computer Science Fundamentals',
+                  },
+                },
+              },
+            },
+          }),
+        }),
+      )
+
+    const openEditForm = async () => {
+      stubSchedule()
+      renderApp('/course/F101/edit')
+      await screen.findByRole('heading', { name: 'Edit CS F101' })
+    }
+
+    it('saves changed course data and returns to the list', async () => {
+      mockUpdateDoc.mockResolvedValue(undefined)
+      await openEditForm()
+
+      fireEvent.change(screen.getByRole('textbox', { name: 'Course title' }), {
+        target: { value: 'Updated title' },
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'Submit' }))
+
+      expect(
+        await screen.findByRole('heading', { name: 'CS Courses for 2018-2019' }),
+      ).toBeTruthy()
+      expect(mockUpdateDoc).toHaveBeenCalledTimes(1)
+      expect(mockUpdateDoc).toHaveBeenCalledWith(
+        'schedules/CS-2018-2019',
+        expect.objectContaining({ segments: ['courses', 'F101'] }),
+        {
+          title: 'Updated title',
+          term: 'Fall',
+          number: '101',
+          meets: 'MWF 11:00-11:50',
+        },
+      )
+    })
+
+    it('does not submit when nothing has changed', async () => {
+      await openEditForm()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Submit' }))
+
+      expect(
+        await screen.findByText('No changes to submit.'),
+      ).toBeTruthy()
+      expect(mockUpdateDoc).not.toHaveBeenCalled()
+    })
+
+    it('does not submit when a field has an error', async () => {
+      await openEditForm()
+
+      fireEvent.change(screen.getByRole('textbox', { name: 'Course title' }), {
+        target: { value: 'X' },
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'Submit' }))
+
+      expect(
+        await screen.findByText('Fix the highlighted fields before submitting.'),
+      ).toBeTruthy()
+      expect(mockUpdateDoc).not.toHaveBeenCalled()
+    })
+
+    it('shows an error when saving fails', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined)
+      mockUpdateDoc.mockRejectedValue(new Error('permission-denied'))
+      await openEditForm()
+
+      fireEvent.change(screen.getByRole('textbox', { name: 'Term' }), {
+        target: { value: 'Winter' },
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'Submit' }))
+
+      expect(
+        await screen.findByText('Unable to save course. Please try again.'),
+      ).toBeTruthy()
+      expect(
+        screen.getByRole('heading', { name: 'Edit CS F101' }),
+      ).toBeTruthy()
+    })
   })
 
   it('shows an error message if the schedule cannot be fetched', async () => {
