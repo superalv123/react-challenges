@@ -1,0 +1,1 @@
+Add the ability to save changed course data to the Firebase Realtime database when the user clicks a Submit button. Nothing should be submitted if there are any form field errors or no changes to any value. This includes adding a submit button to the left of the cancel button in the course edit form. There should be an onSubmit and onError. 
