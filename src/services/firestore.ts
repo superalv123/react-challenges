@@ -1,10 +1,6 @@
 import { doc, FieldPath, getDoc, updateDoc } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
-import type {
-  ScheduleCourse,
-  ScheduleData,
-  ScheduleEntry,
-} from '../types/schedule'
+import type { ScheduleCourse, ScheduleData, ScheduleEntry } from '../types/schedule'
 import { db } from './firebase'
 
 export const SCHEDULE_DOCUMENT_PATH = 'schedules/CS-2018-2019'

@@ -4,14 +4,40 @@ import {
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router'
+import { onAuthStateChanged, type Auth, type NextOrObserver, type User } from 'firebase/auth'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { routeTree } from './routeTree.gen'
 
-const { mockGetDoc, mockUpdateDoc } = vi.hoisted(() => ({
+const { mockGetDoc, mockUpdateDoc, mockSignInWithPopup, mockSignOut, authState } = vi.hoisted(() => ({
   mockGetDoc: vi.fn(),
   mockUpdateDoc: vi.fn(),
+  mockSignInWithPopup: vi.fn(),
+  mockSignOut: vi.fn(),
+  authState: { currentUser: null as { displayName: string; email: string } | null },
 }))
+
+const notifyCurrentUser = (_auth: Auth, observer: NextOrObserver<User>) => {
+  const user = authState.currentUser as User | null
+
+  if (typeof observer === 'function') {
+    observer(user)
+  } else {
+    observer.next(user)
+  }
+
+  return () => undefined
+}
+
+vi.mock('firebase/auth', () => ({
+  getAuth: vi.fn(() => authState),
+  GoogleAuthProvider: class {},
+  onAuthStateChanged: vi.fn(),
+  signInWithPopup: mockSignInWithPopup,
+  signOut: mockSignOut,
+}))
+
+const signedInUser = { displayName: 'Test User', email: 'test@example.com' }
 
 vi.mock('firebase/firestore', () => ({
   doc: vi.fn((...args: [unknown, string]) => args[1]),
@@ -27,6 +53,7 @@ vi.mock('firebase/firestore', () => ({
 }))
 
 beforeEach(() => {
+  vi.mocked(onAuthStateChanged).mockImplementation(notifyCurrentUser)
   mockGetDoc.mockImplementation(async () => {
     const response = await fetch('https://firestore.test')
 
@@ -56,6 +83,9 @@ describe('App', () => {
   afterEach(() => {
     mockGetDoc.mockReset()
     mockUpdateDoc.mockReset()
+    mockSignInWithPopup.mockReset()
+    mockSignOut.mockReset()
+    authState.currentUser = null
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
   })
@@ -350,6 +380,7 @@ describe('App', () => {
   })
 
   it('opens a populated course edit form and returns to the list on cancel', async () => {
+    authState.currentUser = signedInUser
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -424,6 +455,7 @@ describe('App', () => {
       )
 
     const openEditForm = async () => {
+      authState.currentUser = signedInUser
       stubSchedule()
       renderApp('/course/F101/edit')
       await screen.findByRole('heading', { name: 'Edit CS F101' })
@@ -495,6 +527,94 @@ describe('App', () => {
       expect(
         screen.getByRole('heading', { name: 'Edit CS F101' }),
       ).toBeTruthy()
+    })
+  })
+
+  describe('authentication', () => {
+    const stubSchedule = () =>
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            schedules: {
+              'CS-2018-2019': {
+                title: 'CS Courses for 2018-2019',
+                courses: {
+                  F101: { term: 'Fall', number: '101', meets: 'MWF 11:00-11:50', title: 'Intro course' },
+                },
+              },
+            },
+          }),
+        }),
+      )
+
+    it('hides course edit buttons from signed-out users', async () => {
+      stubSchedule()
+      renderApp()
+
+      expect(await screen.findByRole('button', { name: 'Fall CS 101' })).toBeTruthy()
+      expect(screen.queryByRole('link', { name: 'Edit Fall CS 101' })).toBeNull()
+      expect(screen.getByRole('button', { name: 'Sign in' })).toBeTruthy()
+    })
+
+    it('shows course edit buttons and a sign out button to signed-in users', async () => {
+      authState.currentUser = signedInUser
+      stubSchedule()
+      renderApp()
+
+      expect(await screen.findByRole('link', { name: 'Edit Fall CS 101' })).toBeTruthy()
+      expect(screen.getByText('Test User')).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Sign out' })).toBeTruthy()
+    })
+
+    it('signs in with Google when the sign in button is clicked', async () => {
+      mockSignInWithPopup.mockResolvedValue(undefined)
+      stubSchedule()
+      renderApp()
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Sign in' }))
+
+      expect(mockSignInWithPopup).toHaveBeenCalledTimes(1)
+    })
+
+    it('signs out when the sign out button is clicked', async () => {
+      authState.currentUser = signedInUser
+      mockSignOut.mockResolvedValue(undefined)
+      stubSchedule()
+      renderApp()
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }))
+
+      expect(mockSignOut).toHaveBeenCalledTimes(1)
+    })
+
+    it('shows an error when sign in fails', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined)
+      mockSignInWithPopup.mockRejectedValue(new Error('popup-closed-by-user'))
+      stubSchedule()
+      renderApp()
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Sign in' }))
+
+      expect(await screen.findByText('Unable to sign in. Please try again.')).toBeTruthy()
+    })
+
+    it('waits for the sign-in check before deciding access to the edit page', async () => {
+      vi.mocked(onAuthStateChanged).mockImplementation(() => () => undefined)
+      stubSchedule()
+      renderApp('/course/F101/edit')
+
+      expect(await screen.findByText('Checking sign-in status...')).toBeTruthy()
+      expect(screen.queryByText('You must be signed in to edit courses.')).toBeNull()
+    })
+
+    it('blocks the edit page for signed-out users', async () => {
+      stubSchedule()
+      renderApp('/course/F101/edit')
+
+      expect(await screen.findByText('You must be signed in to edit courses.')).toBeTruthy()
+      expect(screen.queryByRole('textbox', { name: 'Course title' })).toBeNull()
     })
   })
 

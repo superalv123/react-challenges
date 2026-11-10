@@ -1,11 +1,8 @@
 import { createFileRoute, useParams } from '@tanstack/react-router'
 import CourseEditForm from '../components/CourseEditForm'
 import type { ScheduleData, ScheduleEntry } from '../types/schedule'
-import {
-  resolveSchedule,
-  SCHEDULE_DOCUMENT_PATH,
-  useDataQuery,
-} from '../services/firestore'
+import { useAuthState } from '../services/firebase'
+import { resolveSchedule, SCHEDULE_DOCUMENT_PATH, useDataQuery } from '../services/firestore'
 
 const CourseEditComponent = () => {
   const { code } = useParams({ from: '/course/$code/edit' })
@@ -13,6 +10,19 @@ const CourseEditComponent = () => {
     ScheduleData | ScheduleEntry
   >(SCHEDULE_DOCUMENT_PATH)
   const courseData = resolveSchedule(json)
+  const { isAuthenticated, isInitialLoading } = useAuthState()
+
+  if (isInitialLoading) {
+    return <p className="text-stone-700">Checking sign-in status...</p>
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <p role="alert" className="text-red-700">
+        You must be signed in to edit courses.
+      </p>
+    )
+  }
 
   if (isLoading) {
     return <p className="text-stone-700">Loading course...</p>

@@ -1,10 +1,6 @@
 import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
-import {
-  useForm,
-  type SubmitErrorHandler,
-  type SubmitHandler,
-} from 'react-hook-form'
+import { useForm, type SubmitErrorHandler, type SubmitHandler } from 'react-hook-form'
 import { SCHEDULE_DOCUMENT_PATH, updateCourse } from '../services/firestore'
 import { courseResolver, type Course } from '../types/schedule'
 import { CourseField } from './CourseField'

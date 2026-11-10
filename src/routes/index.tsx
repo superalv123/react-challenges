@@ -2,17 +2,15 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import '../App.css'
 import { getConflictingCourseList } from '../utilities/calculateConflicts'
-import {
-  resolveSchedule,
-  SCHEDULE_DOCUMENT_PATH,
-  useDataQuery,
-} from '../services/firestore'
+import { useAuthState } from '../services/firebase'
+import { resolveSchedule, SCHEDULE_DOCUMENT_PATH, useDataQuery } from '../services/firestore'
 import type { Course, ScheduleData, ScheduleEntry } from '../types/schedule'
 
 type CourseCardProps = {
   course: Course
   isSelected: boolean
   isUnavailable: boolean
+  canEdit: boolean
   onToggle: (course: Course) => void
 }
 
@@ -22,6 +20,7 @@ const CourseCard = ({
   course,
   isSelected,
   isUnavailable,
+  canEdit,
   onToggle,
 }: CourseCardProps) => (
   <article
@@ -57,18 +56,20 @@ const CourseCard = ({
         )}
       </span>
     </button>
-    <Link
-      to="/course/$code/edit"
-      params={{ code: course.code }}
-      className={`mt-3 w-full rounded-md border px-3 py-2 font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700 ${
-        isSelected
-          ? 'border-green-400 bg-green-100 text-stone-800 hover:bg-green-200'
-          : 'border-stone-300 bg-white text-stone-800 hover:bg-stone-200'
-      }`}
-      aria-label={`Edit ${course.term} CS ${course.number}`}
-    >
-      Edit course
-    </Link>
+    {canEdit && (
+      <Link
+        to="/course/$code/edit"
+        params={{ code: course.code }}
+        className={`mt-3 w-full rounded-md border px-3 py-2 font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700 ${
+          isSelected
+            ? 'border-green-400 bg-green-100 text-stone-800 hover:bg-green-200'
+            : 'border-stone-300 bg-white text-stone-800 hover:bg-stone-200'
+        }`}
+        aria-label={`Edit ${course.term} CS ${course.number}`}
+      >
+        Edit course
+      </Link>
+    )}
   </article>
 )
 
@@ -163,6 +164,7 @@ type TermPageProps = {
 }
 
 const TermPage = ({ courses }: TermPageProps) => {
+  const { isAuthenticated } = useAuthState()
   const [selectedTerm, setSelectedTerm] = useState('Fall')
   const [selectedCourses, setSelectedCourses] = useState<Course[]>([])
   const [isCoursePlanOpen, setIsCoursePlanOpen] = useState(false)
@@ -213,6 +215,7 @@ const TermPage = ({ courses }: TermPageProps) => {
                 !isSelected &&
                 getConflictingCourseList(course, selectedCourses).length > 0
               }
+              canEdit={isAuthenticated}
               onToggle={toggleCourse}
             />
           )
