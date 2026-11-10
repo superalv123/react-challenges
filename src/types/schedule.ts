@@ -69,4 +69,5 @@ export type ScheduleEntry = z.infer<typeof Schedule>
 export type ScheduleData = z.infer<typeof ScheduleData>
 
 export const validateCourseData = Course.safeParse
+export const validateScheduleData = ScheduleData.safeParse
 export const courseResolver = zodResolver(Course)
