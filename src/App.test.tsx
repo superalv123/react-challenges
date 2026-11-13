@@ -9,12 +9,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { routeTree } from './routeTree.gen'
 
-const { mockGetDoc, mockUpdateDoc, mockSignInWithPopup, mockSignOut, authState } = vi.hoisted(() => ({
+const { mockGetDoc, mockUpdateDoc, mockSignInWithPopup, mockSignOut, authState, adminState } = vi.hoisted(() => ({
   mockGetDoc: vi.fn(),
   mockUpdateDoc: vi.fn(),
   mockSignInWithPopup: vi.fn(),
   mockSignOut: vi.fn(),
-  authState: { currentUser: null as { displayName: string; email: string } | null },
+  authState: { currentUser: null as { uid: string; displayName: string; email: string } | null },
+  adminState: { adminUids: ['admin-1'], error: null as Error | null },
 }))
 
 const notifyCurrentUser = (_auth: Auth, observer: NextOrObserver<User>) => {
@@ -37,10 +38,11 @@ vi.mock('firebase/auth', () => ({
   signOut: mockSignOut,
 }))
 
-const signedInUser = { displayName: 'Test User', email: 'test@example.com' }
+const signedInUser = { uid: 'admin-1', displayName: 'Test User', email: 'test@example.com' }
+const regularUser = { uid: 'user-1', displayName: 'Regular User', email: 'regular@example.com' }
 
 vi.mock('firebase/firestore', () => ({
-  doc: vi.fn((...args: [unknown, string]) => args[1]),
+  doc: vi.fn((_db: unknown, ...segments: string[]) => segments.join('/')),
   FieldPath: class {
     segments: string[]
     constructor(...segments: string[]) {
@@ -54,7 +56,15 @@ vi.mock('firebase/firestore', () => ({
 
 beforeEach(() => {
   vi.mocked(onAuthStateChanged).mockImplementation(notifyCurrentUser)
-  mockGetDoc.mockImplementation(async () => {
+  mockGetDoc.mockImplementation(async (path: string) => {
+    if (path.startsWith('admins/')) {
+      if (adminState.error) {
+        throw adminState.error
+      }
+
+      return { exists: () => adminState.adminUids.includes(path.slice('admins/'.length)) }
+    }
+
     const response = await fetch('https://firestore.test')
 
     if (!response.ok) {
@@ -86,6 +96,7 @@ describe('App', () => {
     mockSignInWithPopup.mockReset()
     mockSignOut.mockReset()
     authState.currentUser = null
+    adminState.error = null
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
   })
@@ -558,7 +569,7 @@ describe('App', () => {
       expect(screen.getByRole('button', { name: 'Sign in' })).toBeTruthy()
     })
 
-    it('shows course edit buttons and a sign out button to signed-in users', async () => {
+    it('shows course edit buttons and a sign out button to administrators', async () => {
       authState.currentUser = signedInUser
       stubSchedule()
       renderApp()
@@ -598,6 +609,59 @@ describe('App', () => {
       fireEvent.click(await screen.findByRole('button', { name: 'Sign in' }))
 
       expect(await screen.findByText('Unable to sign in. Please try again.')).toBeTruthy()
+    })
+
+    it('marks administrators in the banner', async () => {
+      authState.currentUser = signedInUser
+      stubSchedule()
+      renderApp()
+
+      expect(await screen.findByText('Administrator')).toBeTruthy()
+    })
+
+    it('hides course edit buttons from signed-in users who are not administrators', async () => {
+      authState.currentUser = regularUser
+      stubSchedule()
+      renderApp()
+
+      expect(await screen.findByRole('button', { name: 'Fall CS 101' })).toBeTruthy()
+      expect(await screen.findByRole('button', { name: 'Sign out' })).toBeTruthy()
+      expect(screen.queryByRole('link', { name: 'Edit Fall CS 101' })).toBeNull()
+      expect(screen.queryByText('Administrator')).toBeNull()
+    })
+
+    it('blocks the edit page for signed-in users who are not administrators', async () => {
+      authState.currentUser = regularUser
+      stubSchedule()
+      renderApp('/course/F101/edit')
+
+      expect(await screen.findByText('Only administrators can edit courses.')).toBeTruthy()
+      expect(screen.queryByRole('textbox', { name: 'Course title' })).toBeNull()
+    })
+
+    it('reports a reportable error when the administrator check fails', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined)
+      adminState.error = Object.assign(new Error('Missing or insufficient permissions.'), { code: 'permission-denied' })
+      authState.currentUser = signedInUser
+      stubSchedule()
+      renderApp('/course/F101/edit')
+
+      const alerts = await screen.findAllByText(
+        'Unable to check administrator access. Please report this error: permission-denied: Missing or insufficient permissions.',
+      )
+      expect(alerts.length).toBeGreaterThan(0)
+      expect(screen.queryByRole('textbox', { name: 'Course title' })).toBeNull()
+    })
+
+    it('returns to the course list when the banner title is clicked', async () => {
+      authState.currentUser = signedInUser
+      stubSchedule()
+      renderApp('/course/F101/edit')
+
+      await screen.findByRole('heading', { name: 'Edit CS F101' })
+      fireEvent.click(screen.getByRole('link', { name: 'CS Course Scheduler' }))
+
+      expect(await screen.findByRole('heading', { name: 'CS Courses for 2018-2019' })).toBeTruthy()
     })
 
     it('waits for the sign-in check before deciding access to the edit page', async () => {

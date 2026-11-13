@@ -115,3 +115,8 @@ export const updateCourse = async (
 ): Promise<void> => {
   await updateDoc(doc(db, documentPath), new FieldPath('courses', code), course)
 }
+
+export const isUserAdmin = async (uid: string): Promise<boolean> => {
+  const snapshot = await getDoc(doc(db, 'admins', uid))
+  return snapshot.exists()
+}

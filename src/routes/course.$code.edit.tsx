@@ -1,8 +1,8 @@
 import { createFileRoute, useParams } from '@tanstack/react-router'
 import CourseEditForm from '../components/CourseEditForm'
 import type { ScheduleData, ScheduleEntry } from '../types/schedule'
-import { useAuthState } from '../services/firebase'
 import { resolveSchedule, SCHEDULE_DOCUMENT_PATH, useDataQuery } from '../services/firestore'
+import { describeError, useProfile } from '../utilities/profile'
 
 const CourseEditComponent = () => {
   const { code } = useParams({ from: '/course/$code/edit' })
@@ -10,9 +10,9 @@ const CourseEditComponent = () => {
     ScheduleData | ScheduleEntry
   >(SCHEDULE_DOCUMENT_PATH)
   const courseData = resolveSchedule(json)
-  const { isAuthenticated, isInitialLoading } = useAuthState()
+  const { isAuthenticated, isAdmin, isLoading: isProfileLoading, error: profileError } = useProfile()
 
-  if (isInitialLoading) {
+  if (isProfileLoading) {
     return <p className="text-stone-700">Checking sign-in status...</p>
   }
 
@@ -20,6 +20,22 @@ const CourseEditComponent = () => {
     return (
       <p role="alert" className="text-red-700">
         You must be signed in to edit courses.
+      </p>
+    )
+  }
+
+  if (profileError) {
+    return (
+      <p role="alert" className="text-red-700">
+        Unable to check administrator access. Please report this error: {describeError(profileError)}
+      </p>
+    )
+  }
+
+  if (!isAdmin) {
+    return (
+      <p role="alert" className="text-red-700">
+        Only administrators can edit courses.
       </p>
     )
   }

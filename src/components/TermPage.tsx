@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { useAuthState } from '../services/firebase'
 import type { Course } from '../types/schedule'
 import { getConflictingCourseList } from '../utilities/calculateConflicts'
+import { useProfile } from '../utilities/profile'
 import { CourseCard } from './CourseCard'
 import { CoursePlan } from './CoursePlan'
 import { TermSelector } from './TermSelector'
@@ -13,7 +13,7 @@ interface TermPageProps {
 }
 
 export const TermPage = ({ courses }: TermPageProps) => {
-  const { isAuthenticated } = useAuthState()
+  const { isAdmin } = useProfile()
   const [selectedTerm, setSelectedTerm] = useState('Fall')
   const [selectedCourses, setSelectedCourses] = useState<Course[]>([])
   const [isCoursePlanOpen, setIsCoursePlanOpen] = useState(false)
@@ -64,7 +64,7 @@ export const TermPage = ({ courses }: TermPageProps) => {
                 !isSelected &&
                 getConflictingCourseList(course, selectedCourses).length > 0
               }
-              canEdit={isAuthenticated}
+              canEdit={isAdmin}
               onToggle={toggleCourse}
             />
           )
